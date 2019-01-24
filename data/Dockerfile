@@ -1,34 +1,34 @@
-# standard postgres image
-# Postgres Version 11.1
-# Alpine Version 3.8.1
+#
+# standard postgres image (postgres version 11.1)
 # changed standard user (uid 510) to match gcti
 # changed owner of docker-entrypoint.sh to match standard user
 #
 FROM alpine:latest
 
+# ------------
 # postgres user is deleted and created again with new UID to match gcti (uid 510)
+
 RUN set -ex; \
-    deluser postgres; \
-    adduser -u 510 -D -h /var/lib/postgresql -s /bin/sh postgres; \
-    postgresHome="$(getent passwd postgres)"; \
-    postgresHome="$(echo "$postgresHome" | cut -d: -f6)"; \
-    [ "$postgresHome" = '/var/lib/postgresql' ]; \
-    mkdir -p "$postgresHome"; \
-    chown -R postgres:postgres "$postgresHome"; \
-    mkdir /inidb \
-    && chown -R postgres:postgres /inidb \
-    && chmod -R 755 /inidb
+        deluser postgres; \
+        adduser -u 510 -D -h /var/lib/postgresql -s /bin/sh postgres; \
+  postgresHome="$(getent passwd postgres)"; \
+  postgresHome="$(echo "$postgresHome" | cut -d: -f6)"; \
+  [ "$postgresHome" = '/var/lib/postgresql' ]; \
+  mkdir -p "$postgresHome"; \
+  chown -R postgres:postgres "$postgresHome"; \
+  mkdir /inidb \
+  && chown -R postgres:postgres /inidb \
+  && chmod -R 755 /inidb
 
-
-# Script um sql-files auf der db auszuführen
 COPY ./inidb.sh /inidb/
+
 
 # su-exec (gosu-compatible) is installed further down
 
 # make the "en_US.UTF-8" locale so postgres will be utf-8 enabled by default
 # alpine doesn't require explicit locale-file generation
-
 ENV LANG en_US.utf8
+
 RUN mkdir /docker-entrypoint-initdb.d
 
 ENV PG_MAJOR 11
@@ -36,57 +36,63 @@ ENV PG_VERSION 11.1
 ENV PG_SHA256 90815e812874831e9a4bf6e1136bf73bc2c5a0464ef142e2dfea40cda206db08
 
 RUN set -ex \
-    \
-    && apk add --no-cache --virtual .fetch-deps \
-      ca-certificates \
-      openssl \
-      tar \
-    \
-    && wget -O postgresql.tar.bz2 "https://ftp.postgresql.org/pub/source/v$PG_VERS                                                                                                                    ION/postgresql-$PG_VERSION.tar.bz2" \
-    && echo "$PG_SHA256 *postgresql.tar.bz2" | sha256sum -c - \
-    && mkdir -p /usr/src/postgresql \
-    && tar \
-      --extract \
-      --file postgresql.tar.bz2 \
-      --directory /usr/src/postgresql \
-      --strip-components 1 \
-    && rm postgresql.tar.bz2 \
-    \
-    && apk add --no-cache --virtual .build-deps \
-      bison \
-      coreutils \
-      dpkg-dev dpkg \
-      flex \
-      gcc \
-      libc-dev \
-      libedit-dev \
-      libxml2-dev \
-      libxslt-dev \
-      make \
-      openssl-dev \
+  \
+  && apk add --no-cache --virtual .fetch-deps \
+    ca-certificates \
+    openssl \
+    tar \
+  \
+  && wget -O postgresql.tar.bz2 "https://ftp.postgresql.org/pub/source/v$PG_VERSION/postgresql-$PG_VERSION.tar.bz2" \
+  && echo "$PG_SHA256 *postgresql.tar.bz2" | sha256sum -c - \
+  && mkdir -p /usr/src/postgresql \
+  && tar \
+    --extract \
+    --file postgresql.tar.bz2 \
+    --directory /usr/src/postgresql \
+    --strip-components 1 \
+  && rm postgresql.tar.bz2 \
+  \
+  && apk add --no-cache --virtual .build-deps \
+    bison \
+    coreutils \
+    dpkg-dev dpkg \
+    flex \
+    gcc \
+#   krb5-dev \
+    libc-dev \
+    libedit-dev \
+    libxml2-dev \
+    libxslt-dev \
+    make \
+#   openldap-dev \
+    openssl-dev \
 # configure: error: prove not found
-      perl-utils \
+    perl-utils \
 # configure: error: Perl module IPC::Run is required to run TAP tests
-      perl-ipc-run \
-      util-linux-dev \
-      zlib-dev \
-      icu-dev \
-    \
-    && cd /usr/src/postgresql \
+    perl-ipc-run \
+#   perl-dev \
+#   python-dev \
+#   python3-dev \
+#   tcl-dev \
+    util-linux-dev \
+    zlib-dev \
+    icu-dev \
+  \
+  && cd /usr/src/postgresql \
 # update "DEFAULT_PGSOCKET_DIR" to "/var/run/postgresql" (matching Debian)
-# see https://anonscm.debian.org/git/pkg-postgresql/postgresql.git/tree/debian/p                                                                                                                    atches/51-default-sockets-in-var.patch?id=8b539fcb3e093a521c095e70bdfa76887217b8                                                                                                                    9f
-  && awk '$1 == "#define" && $2 == "DEFAULT_PGSOCKET_DIR" && $3 == "\"/tmp\"" {                                                                                                                     $3 = "\"/var/run/postgresql\""; print; next } { print }' src/include/pg_config_m                                                                                                                    anual.h > src/include/pg_config_manual.h.new \
+# see https://anonscm.debian.org/git/pkg-postgresql/postgresql.git/tree/debian/patches/51-default-sockets-in-var.patch?id=8b539fcb3e093a521c095e70bdfa76887217b89f
+  && awk '$1 == "#define" && $2 == "DEFAULT_PGSOCKET_DIR" && $3 == "\"/tmp\"" { $3 = "\"/var/run/postgresql\""; print; next } { print }' src/include/pg_config_manual.h > src/include/pg_config_manual.h.new \
   && grep '/var/run/postgresql' src/include/pg_config_manual.h.new \
   && mv src/include/pg_config_manual.h.new src/include/pg_config_manual.h \
   && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
-# explicitly update autoconf config.guess and config.sub so they support more ar                                                                                                                    ches/libcs
-  && wget -O config/config.guess 'https://git.savannah.gnu.org/cgit/config.git/p                                                                                                                    lain/config.guess?id=7d3d27baf8107b630586c962c057e22149653deb' \
-  && wget -O config/config.sub 'https://git.savannah.gnu.org/cgit/config.git/pla                                                                                                                    in/config.sub?id=7d3d27baf8107b630586c962c057e22149653deb' \
+# explicitly update autoconf config.guess and config.sub so they support more arches/libcs
+  && wget -O config/config.guess 'https://git.savannah.gnu.org/cgit/config.git/plain/config.guess?id=7d3d27baf8107b630586c962c057e22149653deb' \
+  && wget -O config/config.sub 'https://git.savannah.gnu.org/cgit/config.git/plain/config.sub?id=7d3d27baf8107b630586c962c057e22149653deb' \
 # configure options taken from:
-# https://anonscm.debian.org/cgit/pkg-postgresql/postgresql.git/tree/debian/rule                                                                                                                    s?h=9.5
+# https://anonscm.debian.org/cgit/pkg-postgresql/postgresql.git/tree/debian/rules?h=9.5
   && ./configure \
     --build="$gnuArch" \
-# "/usr/src/postgresql/src/backend/access/common/tupconvert.c:105: undefined ref                                                                                                                    erence to `libintl_gettext'"
+# "/usr/src/postgresql/src/backend/access/common/tupconvert.c:105: undefined reference to `libintl_gettext'"
 #   --enable-nls \
     --enable-integer-datetimes \
     --enable-thread-safety \
@@ -102,7 +108,7 @@ RUN set -ex \
     --with-includes=/usr/local/include \
     --with-libraries=/usr/local/lib \
     \
-# these make our image abnormally large (at least 100MB larger), which seems unc                                                                                                                    outh for an "Alpine" (ie, "small") variant :)
+# these make our image abnormally large (at least 100MB larger), which seems uncouth for an "Alpine" (ie, "small") variant :)
 #   --with-krb5 \
 #   --with-gssapi \
 #   --with-ldap \
@@ -122,14 +128,14 @@ RUN set -ex \
     scanelf --needed --nobanner --format '%n#p' --recursive /usr/local \
       | tr ',' '\n' \
       | sort -u \
-      | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:"                                                                                                                     $1 }' \
+      | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
   )" \
   && apk add --no-cache --virtual .postgresql-rundeps \
     $runDeps \
     bash \
     su-exec \
-# tzdata is optional, but only adds around 1Mb to image size and is recommended                                                                                                                     by Django documentation:
-# https://docs.djangoproject.com/en/1.10/ref/databases/#optimizing-postgresql-s-                                                                                                                    configuration
+# tzdata is optional, but only adds around 1Mb to image size and is recommended by Django documentation:
+# https://docs.djangoproject.com/en/1.10/ref/databases/#optimizing-postgresql-s-configuration
     tzdata \
   && apk del .fetch-deps .build-deps \
   && cd / \
@@ -140,16 +146,16 @@ RUN set -ex \
   && find /usr/local -name '*.a' -delete
 
 # make the sample config easier to munge (and "correct by default")
-RUN sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/share/pos                                                                                                                    tgresql/postgresql.conf.sample
+RUN sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/share/postgresql/postgresql.conf.sample
 
-RUN mkdir -p /var/run/postgresql && chown -R postgres:postgres /var/run/postgres                                                                                                                    ql && chmod 2777 /var/run/postgresql
+RUN mkdir -p /var/run/postgresql && chown -R postgres:postgres /var/run/postgresql && chmod 2777 /var/run/postgresql
 
 ENV PGDATA /var/lib/postgresql/data
-RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 777 "$PG                                                                                                                    DATA" # this 777 will be replaced by 700 at runtime (allows semi-arbitrary "--us                                                                                                                    er" values)
+RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 777 "$PGDATA" # this 777 will be replaced by 700 at runtime (allows semi-arbitrary "--user" values)
 VOLUME /var/lib/postgresql/data
 
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod 777 usr/local/bin/docker-entrypoint.sh && ln -s usr/local/bin/docker-e                                                                                                                    ntrypoint.sh / # backwards compat
+RUN chmod 777 usr/local/bin/docker-entrypoint.sh && ln -s usr/local/bin/docker-entrypoint.sh / # backwards compat
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 5432
