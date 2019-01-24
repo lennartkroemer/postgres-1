@@ -1,3 +1,4 @@
+# Script to copy files into the postgres container and execute them on the DB
 for f in ./*; do
   case $f in
         *.sql)
