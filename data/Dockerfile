@@ -3,9 +3,8 @@
 # changed standard user (uid 510) to match gcti
 # changed owner of docker-entrypoint.sh to match standard user
 #
-FROM alpine:latest
+FROM mtr.external.otc.telekomcloud.com/erpk/alpine:latest
 
-# ------------
 # postgres user is deleted and created again with new UID to match gcti (uid 510)
 
 RUN set -ex; \
