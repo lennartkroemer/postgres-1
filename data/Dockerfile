@@ -10,14 +10,14 @@ FROM mtr.external.otc.telekomcloud.com/erpk/alpine:latest
 RUN set -ex; \
         deluser postgres; \
         adduser -u 510 -D -h /var/lib/postgresql -s /bin/sh postgres; \
-  postgresHome="$(getent passwd postgres)"; \
-  postgresHome="$(echo "$postgresHome" | cut -d: -f6)"; \
-  [ "$postgresHome" = '/var/lib/postgresql' ]; \
-  mkdir -p "$postgresHome"; \
-  chown -R postgres:postgres "$postgresHome"; \
-  mkdir /inidb \
-  && chown -R postgres:postgres /inidb \
-  && chmod -R 755 /inidb
+        postgresHome="$(getent passwd postgres)"; \
+        postgresHome="$(echo "$postgresHome" | cut -d: -f6)"; \
+        [ "$postgresHome" = '/var/lib/postgresql' ]; \
+        mkdir -p "$postgresHome"; \
+        chown -R postgres:postgres "$postgresHome"; \
+        mkdir /inidb \
+        && chown -R postgres:postgres /inidb \
+        && chmod -R 755 /inidb
 
 COPY ./inidb.sh /inidb/
 
