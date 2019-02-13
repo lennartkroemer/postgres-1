@@ -2,7 +2,7 @@
 # standard postgres image (postgres version 11.1)
 # changed standard user (uid 510) to match gcti
 # changed owner of docker-entrypoint.sh to match standard user
-#
+# ----
 FROM mtr.external.otc.telekomcloud.com/erpk/alpine:latest
 
 # postgres user is deleted and created again with new UID to match gcti (uid 510)
